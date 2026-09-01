@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export ASTRO_TELEMETRY_DISABLED=1
+
 required=(
   README.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md SUPPORT.md GOVERNANCE.md
-  AGENTS.md LICENSE NOTICE .github/CODEOWNERS .github/PULL_REQUEST_TEMPLATE.md
+  AGENTS.md AUTHORING.md RELEASE_POLICY.md LICENSE NOTICE LICENSE_MAP.json PROVENANCE.md
+  TRADEMARKS.md LICENSES/Apache-2.0.txt LICENSES/CC-BY-4.0.txt
+  LICENSES/LicenseRef-Sangrep-Brand-Content.txt package.json package-lock.json
+  astro.config.mjs tsconfig.json public/favicon.svg public/media-manifest.json
+  .github/CODEOWNERS .github/PULL_REQUEST_TEMPLATE.md
   scripts/check scripts/check-gitleaks scripts/check-public-boundary scripts/audit-public-hosted-metadata
-  scripts/public_boundary_policy.py
+  scripts/check-accessibility.mjs scripts/check-build.mjs scripts/check-content.mjs
+  scripts/check-licenses.mjs scripts/check-review.mjs scripts/public_boundary_policy.py
+  src/content.config.ts
+  src/components/PageTitle.astro
+  src/styles/custom.css tests/build-policy.test.mjs tests/content-policy.test.mjs
+  tests/test_public_boundary_policy.py
 )
 
 for path in "${required[@]}"; do
@@ -23,6 +34,31 @@ fi
 python3 -c 'import ast, pathlib, sys; [ast.parse(pathlib.Path(path).read_text(encoding="utf-8"), filename=path) for path in sys.argv[1:]]' \
   scripts/public_boundary_policy.py scripts/check-public-boundary \
   scripts/audit-public-hosted-metadata
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  printf 'repository-check: node-runtime-unavailable\n' >&2
+  exit 1
+fi
+node_major=$(node -p 'process.versions.node.split(".")[0]')
+if (( node_major < 24 )); then
+  printf 'repository-check: node-version-unsupported required=24 actual=%s\n' "$node_major" >&2
+  exit 1
+fi
+node --check scripts/check-accessibility.mjs
+node --check scripts/check-build.mjs
+node --check scripts/check-content.mjs
+node --check scripts/check-licenses.mjs
+node --check scripts/check-review.mjs
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_public_boundary_policy.py
+npm test
+npm run check:content
+npm run check:licenses
+npm run check:types
+npm run check:format
+npm run check:review
+npm run build
+npm run check:build
+npm run check:html
+npm run check:accessibility
 ./scripts/check-gitleaks
 PYTHONDONTWRITEBYTECODE=1 ./scripts/check-public-boundary
 printf 'repository-check: passed\n'

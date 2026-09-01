@@ -1,0 +1,70 @@
+---
+title: Choose local workspace storage
+description:
+  Select a supported local location and keep the matching device credential available in an
+  unreleased macOS build.
+status: Unreleased
+platforms:
+  - macOS
+version: Development build
+limitations:
+  Only writable local APFS storage has been verified for this development workflow; network,
+  removable, Windows, and packaged-install behavior is not qualified here.
+privacy:
+  The selected filesystem path remains outside the renderer, and the workspace secret is not stored
+  in the bundle, renderer storage, environment, or command line.
+recovery:
+  Re-select a moved or expired folder; if the matching device credential is unavailable, restore or
+  unlock it instead of creating a plaintext replacement.
+contentType: task
+expectedResult:
+  Sangrep validates the selected local location and opens the workspace only when its encrypted
+  storage and matching device credential are available.
+draft: true
+pagefind: false
+sidebar:
+  badge:
+    text: Unreleased
+    variant: caution
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components';
+
+Use a local folder that Sangrep can treat as supported storage. The system picker—not the renderer—
+handles the selected path.
+
+## Select the right target
+
+<Tabs>
+  <TabItem label="Create new">
+    <ol>
+      <li>Enter the workspace name.</li>
+      <li>
+        Choose <strong>Choose location and create</strong>.
+      </li>
+      <li>Select a writable local APFS parent folder.</li>
+    </ol>
+  </TabItem>
+  <TabItem label="Open existing">
+    <ol>
+      <li>
+        Choose <strong>Open existing</strong>.
+      </li>
+      <li>
+        Select the <code>.sangrep</code> bundle itself.
+      </li>
+      <li>Wait for inspection before choosing an offered open, migration, or recovery action.</li>
+    </ol>
+  </TabItem>
+</Tabs>
+
+## Keep device custody available
+
+The matching workspace secret stays in the operating system credential store. Sangrep does not fall
+back to a file, renderer storage, an environment value, or a command-line argument.
+
+If the credential store is locked or the matching secret is absent, unlock or restore device access
+and retry. Do not invent a replacement key or alter the bundle.
+
+For what stays on the device, read
+[Understand local workspace custody](/privacy/local-workspace-custody/).

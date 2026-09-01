@@ -1,0 +1,14 @@
+Sangrep Brand Content License
+
+Copyright 2026 Sangrep. All rights reserved.
+
+This reserved-rights classification applies only to Sangrep names, marks, logos, and files
+explicitly designated as LicenseRef-Sangrep-Brand-Content in LICENSE_MAP.json or an applicable
+media-manifest entry. It is not an open-source or open-content license.
+
+No permission is granted to copy, modify, distribute, display, or create derivative works from the
+designated brand content except for reasonable and customary use necessary to identify Sangrep as
+the origin of the repository or licensed material, or as separately permitted in writing.
+
+The Apache-2.0 and CC-BY-4.0 terms applying to other files do not grant trademark rights or change
+this reserved-rights classification. See TRADEMARKS.md.

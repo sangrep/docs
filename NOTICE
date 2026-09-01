@@ -1,5 +1,10 @@
 sangrep/docs
+Copyright 2026 Sangrep contributors.
 
-This foundation contains governance and verification scaffolding only. Repository-specific
-copyright, attribution, third-party, trademark, and generated-artifact notices must be completed
-and reviewed before publication.
+Documentation prose is licensed under Creative Commons Attribution 4.0 International. Renderer,
+build, test, example, and verification code is licensed under Apache License 2.0. Sangrep names,
+marks, logos, and designated brand artwork are reserved as described by
+LicenseRef-Sangrep-Brand-Content and TRADEMARKS.md.
+
+No third-party product media is included. Runtime dependencies retain their own upstream licenses;
+package-lock.json records the exact dependency graph and is not an attribution substitute.

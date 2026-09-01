@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
+import io
 import json
 import os
 import re
@@ -27,6 +29,19 @@ ALLOWED_BINARY_SUFFIXES = {
     ".webm",
     ".webp",
 }
+PAGEFIND_BINARY_SUFFIXES = {
+    ".pagefind",
+    ".pf_fragment",
+    ".pf_index",
+    ".pf_meta",
+}
+PAGEFIND_PUBLIC_RUNNER_RUST_PATH = re.compile(
+    r"(?:/Users|/home)/runner/(?:"
+    r"\.cargo/registry/src/index\.crates\.io-[0-9a-f]+/"
+    r"[A-Za-z0-9_.+-]+-[0-9][A-Za-z0-9_.+-]*/src/[A-Za-z0-9_./+-]+\.rs|"
+    r"\.rustup/toolchains/[A-Za-z0-9_.+-]+/lib/rustlib/src/rust/library/"
+    r"[A-Za-z0-9_./+-]+\.rs)"
+)
 PROHIBITED_SUFFIXES = {
     ".crash",
     ".db",
@@ -213,6 +228,32 @@ def scan_bytes(
         return [Finding(category="file-over-size-budget", record_id=record_id)]
     if normalized_suffix in PROHIBITED_SUFFIXES:
         return [Finding(category="prohibited-file-type", record_id=record_id)]
+    if normalized_suffix in PAGEFIND_BINARY_SUFFIXES:
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(data)) as archive:
+                decoded = archive.read(MAX_SCANNED_BYTES + 1)
+        except (EOFError, OSError):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        if len(decoded) > MAX_SCANNED_BYTES or not decoded.startswith(b"pagefind_dcd"):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        payload = decoded[len(b"pagefind_dcd") :]
+        if normalized_suffix == ".pagefind" and not payload.startswith(b"\x00asm\x01\x00\x00\x00"):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        if normalized_suffix == ".pf_fragment":
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError:
+                return [Finding(category="invalid-generated-search", record_id=record_id)]
+            if not text.startswith("{"):
+                return [Finding(category="invalid-generated-search", record_id=record_id)]
+        else:
+            text = payload.decode("utf-8", errors="ignore")
+            if normalized_suffix == ".pagefind":
+                text = PAGEFIND_PUBLIC_RUNNER_RUST_PATH.sub(
+                    "[pagefind-public-build-path]",
+                    text,
+                )
+        return scan_text(text, source=source, include_restricted=include_restricted)
     if normalized_suffix in ALLOWED_BINARY_SUFFIXES:
         findings = scan_text(
             data.decode("utf-8", errors="ignore"),

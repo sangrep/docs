@@ -10,6 +10,7 @@ Describe the repository-local public outcome. Link only public Issues or Discuss
 
 ## Publication boundary
 
-- [ ] Branch, commits, diff, PR text, and generated output contain no private context or credentials.
+- [ ] Branch, commits, diff, PR text, and generated output contain no private context or
+      credentials.
 - [ ] `./scripts/check` passes on these bytes.
 - [ ] Security, license, provenance, and documentation effects are explicit.
