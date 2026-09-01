@@ -100,6 +100,8 @@ class LocalGitleaksGateTests(unittest.TestCase):
 
     def run_gate(self, repository: Path, scanner: Path) -> subprocess.CompletedProcess[str]:
         environment = os.environ.copy()
+        for inherited_name in ("GITHUB_ACTIONS", "GITHUB_EVENT_NAME", "GITHUB_EVENT_PATH"):
+            environment.pop(inherited_name, None)
         environment.update(
             {
                 "PYTHONDONTWRITEBYTECODE": "1",
