@@ -18,8 +18,10 @@ sys.dont_write_bytecode = True
 
 from public_boundary_policy import (  # noqa: E402
     Finding,
+    POLICY_SOURCE_PATH,
     canonical_inventory_digest,
     scan_bytes,
+    scan_github_actions_log_bytes,
 )
 
 SURFACES = {
@@ -169,7 +171,12 @@ def _list(endpoint: str, *, collection_key: str | None = None) -> list[dict[str,
     return rows
 
 
-def _scan_zip(payload: bytes, *, source: str) -> tuple[list[Finding], dict[str, Any]]:
+def _scan_zip(
+    payload: bytes,
+    *,
+    source: str,
+    workflow_repository_name: str | None = None,
+) -> tuple[list[Finding], dict[str, Any]]:
     if len(payload) > 64 * 1024 * 1024:
         raise HostedAuditError("hosted archive exceeds the audit download budget")
     findings: list[Finding] = []
@@ -193,13 +200,23 @@ def _scan_zip(payload: bytes, *, source: str) -> tuple[list[Finding], dict[str, 
                 raise HostedAuditError("expanded hosted archive exceeds the audit budget")
             data = archive.read(info)
             entry_source = f"{source}:{info.filename}"
-            findings.extend(
-                scan_bytes(
-                    data,
-                    source=entry_source,
-                    suffix=Path(info.filename).suffix,
+            if workflow_repository_name is None:
+                findings.extend(
+                    scan_bytes(
+                        data,
+                        source=entry_source,
+                        suffix=Path(info.filename).suffix,
+                    )
                 )
-            )
+            else:
+                findings.extend(
+                    scan_github_actions_log_bytes(
+                        data,
+                        source=entry_source,
+                        repository_name=workflow_repository_name,
+                        suffix=Path(info.filename).suffix,
+                    )
+                )
             entries.append(
                 {
                     "pathDigest": hashlib.sha256(info.filename.encode("utf-8")).hexdigest(),
@@ -297,7 +314,11 @@ def collect_live_inventory(repository: str) -> tuple[dict[str, Any], list[Findin
             raise HostedAuditError("workflow job inventory returned the wrong shape")
         surfaces["workflowJobs"].extend(jobs["jobs"])
         log_payload = _gh(["api", f"{prefix}/actions/runs/{run_id}/logs"], binary=True)
-        log_findings, log_receipt = _scan_zip(log_payload, source=f"workflow-log:{run_id}")
+        log_findings, log_receipt = _scan_zip(
+            log_payload,
+            source=f"workflow-log:{run_id}",
+            workflow_repository_name=name,
+        )
         findings.extend(log_findings)
         surfaces["workflowLogs"].append({"runId": run_id, **log_receipt})
 
@@ -397,8 +418,29 @@ def scan_inventory(inventory: dict[str, Any], initial: list[Finding]) -> list[Fi
     findings = list(initial)
     for surface, records in inventory["surfaces"].items():
         for index, record in enumerate(records):
+            source = f"hosted:{surface}:{index}"
+            if surface == "pullReviewComments" and isinstance(record, dict):
+                metadata = dict(record)
+                diff_hunk = metadata.pop("diff_hunk", None)
+                payload = json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+                findings.extend(scan_bytes(payload, source=f"{source}:metadata"))
+                if diff_hunk is not None:
+                    if not isinstance(diff_hunk, str):
+                        raise HostedAuditError("pull review diff hunk had the wrong shape")
+                    path = record.get("path")
+                    findings.extend(
+                        scan_bytes(
+                            diff_hunk.encode("utf-8"),
+                            source=f"{source}:diff-hunk",
+                            suffix=Path(path).suffix if isinstance(path, str) else "",
+                            include_restricted=path != POLICY_SOURCE_PATH,
+                        )
+                    )
+                continue
             payload = json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            findings.extend(scan_bytes(payload, source=f"hosted:{surface}:{index}"))
+            findings.extend(scan_bytes(payload, source=source))
     return findings
 
 

@@ -1,8 +1,14 @@
 SPDX-License-Identifier: CC-BY-4.0 AND Apache-2.0 AND LicenseRef-Sangrep-Brand-Content
 
-LICENSING INTENT — NO PUBLICATION GRANT YET
+Copyright 2026 Sangrep contributors.
 
-This private repository foundation records the approved licensing expression shown above. It does
-not grant public rights before the repository-specific copyright, provenance, contribution terms,
-license texts, notices, trademark treatment, and file-level classifications are reviewed and
-committed. Publication must fail closed until that work is accepted.
+This repository is a mixed-license distribution:
+
+- documentation prose is available under CC-BY-4.0;
+- renderer, build, test, example, and verification code is available under Apache-2.0; and
+- designated Sangrep names, marks, logos, and brand artwork remain under
+  LicenseRef-Sangrep-Brand-Content.
+
+See LICENSE_MAP.json for machine-readable path precedence and LICENSES/ for the applicable terms.
+TRADEMARKS.md explains the trademark boundary. A file-specific notice or media-manifest entry takes
+precedence when present.

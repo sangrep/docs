@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
+import io
 import json
 import os
 import re
@@ -8,6 +10,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 MAX_SCANNED_BYTES = 8 * 1024 * 1024
+POLICY_SOURCE_PATH = "scripts/public_boundary_policy.py"
 GENERATED_OUTPUT_ROOTS = (
     "artifacts",
     "build",
@@ -27,6 +30,20 @@ ALLOWED_BINARY_SUFFIXES = {
     ".webm",
     ".webp",
 }
+PAGEFIND_BINARY_SUFFIXES = {
+    ".pagefind",
+    ".pf_fragment",
+    ".pf_index",
+    ".pf_meta",
+}
+PAGEFIND_PUBLIC_RUNNER_RUST_PATH = re.compile(
+    r"(?:/Users|/home)/runner/(?:"
+    r"\.cargo/registry/src/index\.crates\.io-[0-9a-f]+/"
+    r"[A-Za-z0-9_.+-]+-[0-9][A-Za-z0-9_.+-]*/src/[A-Za-z0-9_./+-]+\.rs|"
+    r"\.rustup/toolchains/[A-Za-z0-9_.+-]+/lib/rustlib/src/rust/library/"
+    r"[A-Za-z0-9_./+-]+\.rs)"
+)
+GITHUB_REPOSITORY_NAME = re.compile(r"[A-Za-z0-9._-]{1,100}\Z")
 PROHIBITED_SUFFIXES = {
     ".crash",
     ".db",
@@ -213,6 +230,32 @@ def scan_bytes(
         return [Finding(category="file-over-size-budget", record_id=record_id)]
     if normalized_suffix in PROHIBITED_SUFFIXES:
         return [Finding(category="prohibited-file-type", record_id=record_id)]
+    if normalized_suffix in PAGEFIND_BINARY_SUFFIXES:
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(data)) as archive:
+                decoded = archive.read(MAX_SCANNED_BYTES + 1)
+        except (EOFError, OSError):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        if len(decoded) > MAX_SCANNED_BYTES or not decoded.startswith(b"pagefind_dcd"):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        payload = decoded[len(b"pagefind_dcd") :]
+        if normalized_suffix == ".pagefind" and not payload.startswith(b"\x00asm\x01\x00\x00\x00"):
+            return [Finding(category="invalid-generated-search", record_id=record_id)]
+        if normalized_suffix == ".pf_fragment":
+            try:
+                text = payload.decode("utf-8")
+            except UnicodeDecodeError:
+                return [Finding(category="invalid-generated-search", record_id=record_id)]
+            if not text.startswith("{"):
+                return [Finding(category="invalid-generated-search", record_id=record_id)]
+        else:
+            text = payload.decode("utf-8", errors="ignore")
+            if normalized_suffix == ".pagefind":
+                text = PAGEFIND_PUBLIC_RUNNER_RUST_PATH.sub(
+                    "[pagefind-public-build-path]",
+                    text,
+                )
+        return scan_text(text, source=source, include_restricted=include_restricted)
     if normalized_suffix in ALLOWED_BINARY_SUFFIXES:
         findings = scan_text(
             data.decode("utf-8", errors="ignore"),
@@ -229,6 +272,36 @@ def scan_bytes(
     except UnicodeDecodeError:
         return [Finding(category="non-utf8-text", record_id=record_id)]
     return scan_text(text, source=source, include_restricted=include_restricted)
+
+
+def scan_github_actions_log_bytes(
+    data: bytes,
+    *,
+    source: str,
+    repository_name: str,
+    suffix: str = ".txt",
+) -> list[Finding]:
+    if (
+        not GITHUB_REPOSITORY_NAME.fullmatch(repository_name)
+        or repository_name in {".", ".."}
+    ):
+        return [Finding(category="invalid-repository-name", record_id=opaque_record_id(source))]
+    if len(data) > MAX_SCANNED_BYTES or b"\x00" in data:
+        return scan_bytes(data, source=source, suffix=suffix)
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return scan_bytes(data, source=source, suffix=suffix)
+
+    roots = (
+        f"/home/runner/work/{repository_name}/{repository_name}",
+        "/home/runner/work/_temp",
+        "/home/runner/.npm",
+    )
+    boundary = r"(?=/|\.\.\.(?=[\s\"'<>:,;)\]}]|\Z)|[\s\"'<>:,;)\]}]|\Z)"
+    for root in roots:
+        text = re.sub(re.escape(root) + boundary, "[github-actions-public-runner-root]", text)
+    return scan_bytes(text.encode("utf-8"), source=source, suffix=suffix)
 
 
 def scan_path(path: Path, *, source: str, include_restricted: bool = True) -> list[Finding]:

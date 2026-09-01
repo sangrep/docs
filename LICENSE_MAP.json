@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "sangrep.license-map.v1",
+  "rules": [
+    {
+      "patterns": ["LICENSE", "NOTICE", "LICENSES/**", "LICENSE_MAP.json", "TRADEMARKS.md"],
+      "license": "License-Notice"
+    },
+    {
+      "patterns": ["public/favicon.svg"],
+      "license": "LicenseRef-Sangrep-Brand-Content"
+    },
+    {
+      "patterns": ["public/screenshots/**", "public/recordings/**"],
+      "license": "Per-public-media-manifest"
+    },
+    {
+      "patterns": ["**/*.md", "**/*.mdx"],
+      "license": "CC-BY-4.0"
+    },
+    {
+      "patterns": ["**"],
+      "license": "Apache-2.0"
+    }
+  ]
+}

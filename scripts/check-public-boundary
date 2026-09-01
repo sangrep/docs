@@ -13,13 +13,13 @@ sys.dont_write_bytecode = True
 
 from public_boundary_policy import (  # noqa: E402
     Finding,
+    POLICY_SOURCE_PATH,
     generated_output_paths,
     opaque_record_id,
     scan_bytes,
     scan_path,
 )
 
-POLICY_PATH = "scripts/public_boundary_policy.py"
 SHA_PATTERN = re.compile(r"[0-9a-f]{40,64}\Z")
 REGULAR_MODES = {"100644", "100755"}
 
@@ -83,7 +83,7 @@ def _scan_blob(
         data,
         source=source,
         suffix=Path(path).suffix,
-        include_restricted=path != POLICY_PATH,
+        include_restricted=path != POLICY_SOURCE_PATH,
     )
     return [*path_findings, *content_findings]
 
@@ -127,7 +127,7 @@ def _scan_working_outputs() -> list[Finding]:
             scan_path(
                 Path(path),
                 source=f"working-output:{path}",
-                include_restricted=path != POLICY_PATH,
+                include_restricted=path != POLICY_SOURCE_PATH,
             )
         )
     return findings
