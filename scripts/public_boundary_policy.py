@@ -42,6 +42,7 @@ PAGEFIND_PUBLIC_RUNNER_RUST_PATH = re.compile(
     r"\.rustup/toolchains/[A-Za-z0-9_.+-]+/lib/rustlib/src/rust/library/"
     r"[A-Za-z0-9_./+-]+\.rs)"
 )
+GITHUB_REPOSITORY_NAME = re.compile(r"[A-Za-z0-9._-]{1,100}\Z")
 PROHIBITED_SUFFIXES = {
     ".crash",
     ".db",
@@ -270,6 +271,36 @@ def scan_bytes(
     except UnicodeDecodeError:
         return [Finding(category="non-utf8-text", record_id=record_id)]
     return scan_text(text, source=source, include_restricted=include_restricted)
+
+
+def scan_github_actions_log_bytes(
+    data: bytes,
+    *,
+    source: str,
+    repository_name: str,
+    suffix: str = ".txt",
+) -> list[Finding]:
+    if (
+        not GITHUB_REPOSITORY_NAME.fullmatch(repository_name)
+        or repository_name in {".", ".."}
+    ):
+        return [Finding(category="invalid-repository-name", record_id=opaque_record_id(source))]
+    if len(data) > MAX_SCANNED_BYTES or b"\x00" in data:
+        return scan_bytes(data, source=source, suffix=suffix)
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return scan_bytes(data, source=source, suffix=suffix)
+
+    roots = (
+        f"/home/runner/work/{repository_name}/{repository_name}",
+        "/home/runner/work/_temp",
+        "/home/runner/.npm",
+    )
+    boundary = r"(?=/|\.\.\.|[\s\"'<>:,;)\]}]|\Z)"
+    for root in roots:
+        text = re.sub(re.escape(root) + boundary, "[github-actions-public-runner-root]", text)
+    return scan_bytes(text.encode("utf-8"), source=source, suffix=suffix)
 
 
 def scan_path(path: Path, *, source: str, include_restricted: bool = True) -> list[Finding]:

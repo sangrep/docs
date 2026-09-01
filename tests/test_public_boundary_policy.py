@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import unittest
 
-from scripts.public_boundary_policy import scan_bytes
+from scripts.public_boundary_policy import scan_bytes, scan_github_actions_log_bytes
 
 
 class PagefindBoundaryTests(unittest.TestCase):
@@ -91,6 +91,68 @@ class PagefindBoundaryTests(unittest.TestCase):
             ],
             ["local-absolute-path"],
         )
+
+
+class GitHubActionsLogBoundaryTests(unittest.TestCase):
+    def test_normalizes_only_public_runner_roots_for_this_repository(self) -> None:
+        runner_home = b"/" + b"home/runner"
+        payload = b"\n".join(
+            (
+                runner_home + b"/work/docs/docs/src/content/docs/index.mdx",
+                b"Checking files in " + runner_home + b"/work/docs/docs...",
+                runner_home + b"/work/_temp/runner-script.sh",
+                runner_home + b"/.npm/_logs/install.log",
+            )
+        )
+
+        self.assertEqual(
+            scan_github_actions_log_bytes(
+                payload,
+                source="workflow-log",
+                repository_name="docs",
+            ),
+            [],
+        )
+
+    def test_rejects_other_runner_and_developer_paths(self) -> None:
+        runner_home = b"/" + b"home/runner"
+        payloads = (
+            runner_home + b"/private-workspace/input.txt",
+            runner_home + b"/work/other/other/input.txt",
+            b"/" + b"Users/example/private-workspace/input.txt",
+        )
+
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                findings = scan_github_actions_log_bytes(
+                    payload,
+                    source="workflow-log",
+                    repository_name="docs",
+                )
+                self.assertEqual(
+                    [finding.category for finding in findings],
+                    ["local-absolute-path"],
+                )
+
+    def test_preserves_secret_scanning_after_runner_root_normalization(self) -> None:
+        token = b"ghp_" + (b"A" * 24)
+        runner_workspace = b"/" + b"home/runner/work/docs/docs/"
+        findings = scan_github_actions_log_bytes(
+            runner_workspace + token,
+            source="workflow-log",
+            repository_name="docs",
+        )
+
+        self.assertEqual([finding.category for finding in findings], ["github-token"])
+
+    def test_rejects_an_invalid_repository_name(self) -> None:
+        findings = scan_github_actions_log_bytes(
+            b"safe log",
+            source="workflow-log",
+            repository_name="../docs",
+        )
+
+        self.assertEqual([finding.category for finding in findings], ["invalid-repository-name"])
 
 
 if __name__ == "__main__":
