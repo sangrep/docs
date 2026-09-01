@@ -38,6 +38,7 @@ export default defineConfig({
       favicon: '/favicon.svg',
       customCss: ['./src/styles/custom.css'],
       components: {
+        MobileMenuToggle: './src/components/MobileMenuToggle.astro',
         PageTitle: './src/components/PageTitle.astro',
       },
       credits: false,

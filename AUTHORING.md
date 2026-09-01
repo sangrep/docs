@@ -104,6 +104,10 @@ asset to `public/media-manifest.json` with:
 - the exact alt text used by the page; and
 - the SHA-256 of the committed bytes.
 
+Public screenshots and illustrations must use PNG, JPEG, GIF, or WebP. Recordings must use MP4 or
+WebM. SVG, HTML, and other active formats are not accepted in the public media lane; the separately
+classified static favicon is not product media.
+
 Reference media with an absolute path such as
 `![Workspace Home showing a closed local workspace](/screenshots/workspace-home.png)`. Files larger
 than eight megabytes, missing or empty alt text, unlisted assets, mismatched digests, and

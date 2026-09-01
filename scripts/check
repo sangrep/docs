@@ -14,9 +14,9 @@ required=(
   scripts/check-accessibility.mjs scripts/check-build.mjs scripts/check-content.mjs
   scripts/check-licenses.mjs scripts/check-review.mjs scripts/public_boundary_policy.py
   src/content.config.ts
-  src/components/PageTitle.astro
+  src/components/MobileMenuToggle.astro src/components/PageTitle.astro
   src/styles/custom.css tests/build-policy.test.mjs tests/content-policy.test.mjs
-  tests/test_public_boundary_policy.py
+  tests/test_gitleaks_gate.py tests/test_public_boundary_policy.py
 )
 
 for path in "${required[@]}"; do
@@ -48,7 +48,7 @@ node --check scripts/check-build.mjs
 node --check scripts/check-content.mjs
 node --check scripts/check-licenses.mjs
 node --check scripts/check-review.mjs
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_public_boundary_policy.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
 npm test
 npm run check:content
 npm run check:licenses

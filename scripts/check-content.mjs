@@ -29,16 +29,7 @@ const allowedRouteRoots = new Set([
   'troubleshooting',
   'workspaces',
 ]);
-const mediaExtensions = new Set([
-  '.gif',
-  '.jpeg',
-  '.jpg',
-  '.mp4',
-  '.png',
-  '.svg',
-  '.webm',
-  '.webp',
-]);
+const mediaExtensions = new Set(['.gif', '.jpeg', '.jpg', '.mp4', '.png', '.webm', '.webp']);
 const mediaKinds = new Set(['illustration', 'recording', 'screenshot']);
 const mediaLicenses = new Set(['Apache-2.0', 'CC-BY-4.0', 'LicenseRef-Sangrep-Brand-Content']);
 const maximumMediaBytes = 8 * 1024 * 1024;
@@ -361,6 +352,10 @@ async function loadMediaManifest(publicRoot) {
     const absolutePath = resolve(publicRoot, path);
     if (!pathWithin(absolutePath, publicRoot) || !existsSync(absolutePath)) {
       findings.push(finding('media-provenance', path, 'inventoried asset is missing'));
+      continue;
+    }
+    if (!mediaExtensions.has(extname(absolutePath).toLowerCase())) {
+      findings.push(finding('media-type', path, 'public media must use an inert allowed format'));
       continue;
     }
     if (

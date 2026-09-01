@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 const repositoryRoot = new URL('../', import.meta.url);
@@ -237,13 +238,44 @@ test('rejects public media without a released provenance record', async () => {
 });
 
 test('rejects a media record whose digest does not match its bytes', async () => {
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  );
   const result = await runPolicy(
     {
       'index.md': releasedPage.replace(
         'Released guidance appears here.',
-        '![Workspace status](/screenshots/workspace.svg)',
+        '![Workspace status](/screenshots/workspace.png)',
       ),
     },
+    {
+      'media-manifest.json': JSON.stringify({
+        schemaVersion: 'sangrep.docs.media.v1',
+        assets: [
+          {
+            path: 'screenshots/workspace.png',
+            kind: 'screenshot',
+            status: 'Released',
+            source: 'Sangrep Workbench release capture',
+            license: 'LicenseRef-Sangrep-Brand-Content',
+            alt: 'Workspace status',
+            sha256: '0'.repeat(64),
+          },
+        ],
+      }),
+      'screenshots/workspace.png': png,
+    },
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /category=media-digest/);
+});
+
+test('rejects active SVG from the public screenshot and recording lane', async () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+  const result = await runPolicy(
+    { 'index.md': releasedPage },
     {
       'media-manifest.json': JSON.stringify({
         schemaVersion: 'sangrep.docs.media.v1',
@@ -255,17 +287,16 @@ test('rejects a media record whose digest does not match its bytes', async () =>
             source: 'Sangrep Workbench release capture',
             license: 'LicenseRef-Sangrep-Brand-Content',
             alt: 'Workspace status',
-            sha256: '0'.repeat(64),
+            sha256: createHash('sha256').update(svg).digest('hex'),
           },
         ],
       }),
-      'screenshots/workspace.svg':
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>',
+      'screenshots/workspace.svg': svg,
     },
   );
 
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /category=media-digest/);
+  assert.match(result.stderr, /category=media-type/);
 });
 
 test('requires product technical pages to point to a canonical component reference', async () => {

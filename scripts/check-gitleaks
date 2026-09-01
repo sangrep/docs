@@ -174,11 +174,13 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
   git cat-file -e "${base_sha}^{commit}" 2>/dev/null || blocked base-commit-unavailable
   git cat-file -e "${head_sha}^{commit}" 2>/dev/null || blocked head-commit-unavailable
   history_arguments+=("--log-opts=${base_sha}..${head_sha}")
+  history_arguments+=(.)
+  run_scan "${history_arguments[@]}"
 else
-  history_arguments+=(--staged)
+  git cat-file -e "HEAD^{commit}" 2>/dev/null || blocked head-commit-unavailable
+  run_scan "${history_arguments[@]}" "--log-opts=HEAD" .
+  run_scan "${history_arguments[@]}" --staged .
 fi
-history_arguments+=(.)
-run_scan "${history_arguments[@]}"
 
 path_inventory=$(mktemp "${TMPDIR:-/tmp}/sangrep-gitleaks-paths.XXXXXX")
 inventory_output=$(mktemp "${TMPDIR:-/tmp}/sangrep-gitleaks-inventory-output.XXXXXX")

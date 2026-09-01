@@ -118,6 +118,31 @@ async function main() {
         await page.goto(`${started.origin}${route}`, {
           waitUntil: 'networkidle',
         });
+        if (viewport.name === 'mobile') {
+          const menuButton = page.getByRole('button', { name: 'Menu' });
+          if (await menuButton.isVisible()) {
+            const initialState = await menuButton.getAttribute('aria-expanded');
+            await menuButton.click();
+            await page.waitForFunction(() =>
+              document.body.hasAttribute('data-mobile-menu-expanded'),
+            );
+            const openState = await menuButton.getAttribute('aria-expanded');
+            await menuButton.click();
+            await page.waitForFunction(
+              () => !document.body.hasAttribute('data-mobile-menu-expanded'),
+            );
+            const closedState = await menuButton.getAttribute('aria-expanded');
+            if (initialState !== 'false' || openState !== 'true' || closedState !== 'false') {
+              violations.push({
+                route,
+                viewport: viewport.name,
+                id: 'mobile-menu-expanded-state',
+                impact: 'serious',
+                targets: ['button[aria-label="Menu"]'],
+              });
+            }
+          }
+        }
         const result = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
           .analyze();
