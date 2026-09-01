@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True
 
 from public_boundary_policy import (  # noqa: E402
     Finding,
+    POLICY_SOURCE_PATH,
     canonical_inventory_digest,
     scan_bytes,
     scan_github_actions_log_bytes,
@@ -417,8 +418,29 @@ def scan_inventory(inventory: dict[str, Any], initial: list[Finding]) -> list[Fi
     findings = list(initial)
     for surface, records in inventory["surfaces"].items():
         for index, record in enumerate(records):
+            source = f"hosted:{surface}:{index}"
+            if surface == "pullReviewComments" and isinstance(record, dict):
+                metadata = dict(record)
+                diff_hunk = metadata.pop("diff_hunk", None)
+                payload = json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+                findings.extend(scan_bytes(payload, source=f"{source}:metadata"))
+                if diff_hunk is not None:
+                    if not isinstance(diff_hunk, str):
+                        raise HostedAuditError("pull review diff hunk had the wrong shape")
+                    path = record.get("path")
+                    findings.extend(
+                        scan_bytes(
+                            diff_hunk.encode("utf-8"),
+                            source=f"{source}:diff-hunk",
+                            suffix=Path(path).suffix if isinstance(path, str) else "",
+                            include_restricted=path != POLICY_SOURCE_PATH,
+                        )
+                    )
+                continue
             payload = json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            findings.extend(scan_bytes(payload, source=f"hosted:{surface}:{index}"))
+            findings.extend(scan_bytes(payload, source=source))
     return findings
 
 

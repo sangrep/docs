@@ -16,7 +16,7 @@ required=(
   src/content.config.ts
   src/components/MobileMenuToggle.astro src/components/PageTitle.astro
   src/styles/custom.css tests/build-policy.test.mjs tests/content-policy.test.mjs
-  tests/test_gitleaks_gate.py tests/test_public_boundary_policy.py
+  tests/test_gitleaks_gate.py tests/test_hosted_audit.py tests/test_public_boundary_policy.py
 )
 
 for path in "${required[@]}"; do
