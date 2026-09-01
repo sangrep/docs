@@ -119,6 +119,7 @@ class GitHubActionsLogBoundaryTests(unittest.TestCase):
         payloads = (
             runner_home + b"/private-workspace/input.txt",
             runner_home + b"/work/other/other/input.txt",
+            runner_home + b"/work/docs/docs.../private/input.txt",
             b"/" + b"Users/example/private-workspace/input.txt",
         )
 

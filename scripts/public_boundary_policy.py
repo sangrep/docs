@@ -297,7 +297,7 @@ def scan_github_actions_log_bytes(
         "/home/runner/work/_temp",
         "/home/runner/.npm",
     )
-    boundary = r"(?=/|\.\.\.|[\s\"'<>:,;)\]}]|\Z)"
+    boundary = r"(?=/|\.\.\.(?=[\s\"'<>:,;)\]}]|\Z)|[\s\"'<>:,;)\]}]|\Z)"
     for root in roots:
         text = re.sub(re.escape(root) + boundary, "[github-actions-public-runner-root]", text)
     return scan_bytes(text.encode("utf-8"), source=source, suffix=suffix)
