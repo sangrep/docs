@@ -1,6 +1,7 @@
 node_modules/
 .playwright-cli/
 .astro/
+.wrangler/
 dist/
 output/
 .DS_Store

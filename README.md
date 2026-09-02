@@ -12,6 +12,7 @@ installer, format-support, platform-support, product-release, or public-availabi
 - Use Node.js 24, then run `npm ci` and `./scripts/check`.
 - Read [AUTHORING.md](AUTHORING.md) before writing or promoting a guide.
 - Read [RELEASE_POLICY.md](RELEASE_POLICY.md) before changing page status or repository visibility.
+- Read [DEPLOYMENT.md](DEPLOYMENT.md) before uploading a route-free hosted preview.
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
 - Report vulnerabilities through [SECURITY.md](SECURITY.md), never a public Issue.
 - See [SUPPORT.md](SUPPORT.md) for public questions and support boundaries.
@@ -51,6 +52,7 @@ instead of copying them.
 - `scripts/` — the single check entrypoint and fail-closed publication audits.
 - `AUTHORING.md` — content, metadata, media, and canonical-link contract.
 - `RELEASE_POLICY.md` — status transitions, production filtering, publication, and rollback.
+- `DEPLOYMENT.md` — route-free Cloudflare preview procedure and production exclusions.
 
 ## License status
 

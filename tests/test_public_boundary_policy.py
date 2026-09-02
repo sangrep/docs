@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import gzip
+import tempfile
 import unittest
+from pathlib import Path
 
-from scripts.public_boundary_policy import scan_bytes, scan_github_actions_log_bytes
+from scripts.public_boundary_policy import (
+    generated_output_paths,
+    scan_bytes,
+    scan_github_actions_log_bytes,
+    scan_path,
+)
 
 
 class PagefindBoundaryTests(unittest.TestCase):
@@ -154,6 +161,31 @@ class GitHubActionsLogBoundaryTests(unittest.TestCase):
         )
 
         self.assertEqual([finding.category for finding in findings], ["invalid-repository-name"])
+
+
+class GeneratedOutputBoundaryTests(unittest.TestCase):
+    def test_scans_private_paths_in_ignored_wrangler_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private_path = "/" + "Users/example/private/input.txt"
+            expected_paths = (
+                ".wrangler/state/metadata.txt",
+                "output/wrangler-preview/metadata.txt",
+            )
+            for relative_path in expected_paths:
+                candidate = root / relative_path
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                candidate.write_text(private_path, encoding="utf-8")
+
+            inventoried = generated_output_paths(root)
+
+            self.assertEqual(inventoried, expected_paths)
+            for relative_path in inventoried:
+                findings = scan_path(root / relative_path, source=f"generated:{relative_path}")
+                self.assertEqual(
+                    [finding.category for finding in findings],
+                    ["local-absolute-path"],
+                )
 
 
 if __name__ == "__main__":
