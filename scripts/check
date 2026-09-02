@@ -13,12 +13,14 @@ required=(
   scripts/check scripts/check-gitleaks scripts/check-public-boundary scripts/audit-public-hosted-metadata
   scripts/check-accessibility.mjs scripts/check-build.mjs scripts/check-content.mjs
   scripts/check-licenses.mjs scripts/check-review.mjs scripts/public_boundary_policy.py
+  scripts/publication_authority.py
   scripts/check-preview.mjs
   src/content.config.ts
   src/components/MobileMenuToggle.astro src/components/PageTitle.astro
   src/styles/custom.css tests/build-policy.test.mjs tests/content-policy.test.mjs
   tests/preview-policy.test.mjs
   tests/test_gitleaks_gate.py tests/test_hosted_audit.py tests/test_public_boundary_policy.py
+  tests/test_publication_authority.py
 )
 
 for path in "${required[@]}"; do
@@ -34,7 +36,7 @@ if (( $(wc -l < AGENTS.md) >= 120 )); then
 fi
 
 python3 -c 'import ast, pathlib, sys; [ast.parse(pathlib.Path(path).read_text(encoding="utf-8"), filename=path) for path in sys.argv[1:]]' \
-  scripts/public_boundary_policy.py scripts/check-public-boundary \
+  scripts/public_boundary_policy.py scripts/publication_authority.py scripts/check-public-boundary \
   scripts/audit-public-hosted-metadata
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   printf 'repository-check: node-runtime-unavailable\n' >&2
