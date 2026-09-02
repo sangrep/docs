@@ -12,12 +12,14 @@ from typing import NamedTuple
 MAX_SCANNED_BYTES = 8 * 1024 * 1024
 POLICY_SOURCE_PATH = "scripts/public_boundary_policy.py"
 GENERATED_OUTPUT_ROOTS = (
+    ".wrangler",
     "artifacts",
     "build",
     "coverage",
     "dist",
     "generated",
     "out",
+    "output",
     "reports",
 )
 ALLOWED_BINARY_SUFFIXES = {

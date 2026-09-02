@@ -130,6 +130,32 @@ class LocalGitleaksGateTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("secret-scan: passed", result.stdout)
 
+    def test_scans_ignored_wrangler_generated_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository, scanner = self.make_repository(Path(directory), include_secret=False)
+            (repository / ".gitignore").write_text(".wrangler/\noutput/\n", encoding="utf-8")
+            self.assertEqual(run(["git", "add", ".gitignore"], cwd=repository).returncode, 0)
+            self.assertEqual(
+                run(["git", "commit", "-qm", "ignore generated outputs"], cwd=repository).returncode,
+                0,
+            )
+            marker = "gh" + "p_" + ("A" * 24) + "\n"
+
+            for relative_path in (
+                Path(".wrangler/state/credential.txt"),
+                Path("output/wrangler-preview/credential.txt"),
+            ):
+                with self.subTest(path=relative_path.as_posix()):
+                    candidate = repository / relative_path
+                    candidate.parent.mkdir(parents=True, exist_ok=True)
+                    candidate.write_text(marker, encoding="utf-8")
+
+                    result = self.run_gate(repository, scanner)
+
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("category=gitleaks-nonzero", result.stderr)
+                    shutil.rmtree(repository / relative_path.parts[0])
+
 
 if __name__ == "__main__":
     unittest.main()

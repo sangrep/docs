@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sangrep-docs-preview",
+  "compatibility_date": "2026-07-01",
+  "workers_dev": true,
+  "preview_urls": true,
+  "routes": [],
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+}
